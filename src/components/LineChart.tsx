@@ -20,33 +20,70 @@ ChartJS.register(
 );
 
 interface LineChartProps {
-  data: { [month: string]: { income: number; expense: number } };
+  data: {
+    [key: string]: { income: number; expense: number };
+  };
+  selectedMonth?: string;
 }
 
-const LineChart: React.FC<LineChartProps> = ({ data }) => {
-  const labels = Object.keys(data);
+const LineChart: React.FC<LineChartProps> = ({ data, selectedMonth }) => {
+  const filteredData = selectedMonth
+    ? Object.entries(data).reduce((acc, [month, values]) => {
+        if (month.includes(selectedMonth)) {
+          acc[month] = values;
+        }
+        return acc;
+      }, {} as typeof data)
+    : data;
+  const sortedLabels = Object.keys(filteredData)
+    .sort((a, b) => {
+      const dateA = new Date(a);
+      const dateB = new Date(b);
+      return dateA.getTime() - dateB.getTime();
+    })
+    .reverse();
 
   const chartData = {
-    labels,
+    labels: sortedLabels,
     datasets: [
       {
         label: "Income",
-        data: labels.map((label) => data[label].income),
-        borderColor: "#36A2EB",
+        data: sortedLabels.map((label) => filteredData[label].income),
+        borderColor: "rgb(75, 192, 192)",
+        backgroundColor: "rgba(75, 192, 192, 0.5)",
         fill: false,
         tension: 0.3,
       },
       {
         label: "Expenses",
-        data: labels.map((label) => data[label].expense),
-        borderColor: "#FF6384",
+        data: sortedLabels.map((label) => filteredData[label].expense),
+        borderColor: "rgb(255, 99, 132)",
+        backgroundColor: "rgba(255, 99, 132, 0.5)",
         fill: false,
         tension: 0.3,
       },
     ],
   };
 
-  return <Line data={chartData} />;
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: "top" as const,
+      },
+      title: {
+        display: true,
+        text: "Monthly Income vs Expenses",
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+      },
+    },
+  };
+
+  return <Line data={chartData} options={options} />;
 };
 
 export default LineChart;

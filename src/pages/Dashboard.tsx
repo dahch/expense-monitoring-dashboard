@@ -13,6 +13,8 @@ const Dashboard: React.FC = () => {
   const [monthlyData, setMonthlyData] = useState<{
     [month: string]: { income: number; expense: number };
   }>({});
+  const [selectedMonthLine, setSelectedMonthLine] = useState<string>();
+  const [optionsMonths, setOptionsMonths] = useState<string[]>([]);
   const [balanceData, setBalanceData] = useState({
     totalIncome: 0,
     totalExpense: 0,
@@ -34,11 +36,9 @@ const Dashboard: React.FC = () => {
 
         data.transactions.forEach((transaction: any) => {
           const { category, type, amount, date } = transaction;
+          categoryTotals[category] =
+            Number(categoryTotals[category] || 0) + Number(amount);
 
-          // Totales por categoría
-          categoryTotals[category] = (categoryTotals[category] || 0) + amount;
-
-          // Totales mensuales
           const month = new Date(date).toLocaleString("default", {
             month: "short",
             year: "numeric",
@@ -46,12 +46,25 @@ const Dashboard: React.FC = () => {
           if (!monthlyTotals[month]) {
             monthlyTotals[month] = { income: 0, expense: 0 };
           }
-          monthlyTotals[month][type === "income" ? "income" : "expense"] +=
-            amount;
+          monthlyTotals[month][type as "income" | "expense"] += Number(amount);
         });
-
+        const sortedMonthlyTotals = Object.entries(monthlyTotals)
+          .sort((a, b) => {
+            const dateA = new Date(a[0]);
+            const dateB = new Date(b[0]);
+            return dateA.getTime() - dateB.getTime();
+          })
+          .reduce((acc, [month, data]) => {
+            acc[month] = data;
+            return acc;
+          }, {} as typeof monthlyTotals);
+        console.log(Object.keys(monthlyTotals));
+        const months = [
+          ...new Set(Object.keys(monthlyTotals).map((date) => date)),
+        ];
+        setOptionsMonths(months);
         setCategoriesData(categoryTotals);
-        setMonthlyData(monthlyTotals);
+        setMonthlyData(sortedMonthlyTotals);
       } catch (error) {
         console.error("Failed to fetch transactions:", error);
       }
@@ -88,7 +101,21 @@ const Dashboard: React.FC = () => {
           <h2 className="text-lg font-semibold text-center mb-4">
             Monthly balance over time
           </h2>
-          <LineChart data={monthlyData} />
+          <select
+            onChange={(e) => setSelectedMonthLine(e.target.value)}
+            value={selectedMonthLine || ""}
+            className="w-full p-2 mb-4 border border-gray-300 rounded-md bg-white text-gray-700 
+    hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 
+    focus:border-blue-500 transition-colors"
+          >
+            <option value="">Todos los meses</option>
+            {optionsMonths.map((month) => (
+              <option key={month} value={month}>
+                {month}
+              </option>
+            ))}
+          </select>
+          <LineChart data={monthlyData} selectedMonth={selectedMonthLine} />
         </div>
         <div className="bg-white p-6 shadow rounded">
           <h2 className="text-lg font-semibold text-center mb-4">Balance</h2>
